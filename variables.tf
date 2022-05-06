@@ -4,7 +4,7 @@ variable "fluxcd_namespace" {
   default = "fluxcd"
 }
 
-variable "fluxcd_name" {
+variable "fluxcd_resources_name" {
   description = "Name to give to generated bootstrap resources"
   type = string
   default = "fluxcd"

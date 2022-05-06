@@ -3,7 +3,7 @@ locals {
     "${path.module}/bootstrap-repo-manifests/manifest-template.yml",
     {
       flux_namespace = var.fluxcd_namespace,
-      flux_resources_name = var.fluxcd_name
+      flux_resources_name = var.fluxcd_resources_name
       repo_url = var.repo_url,
       repo_branch = var.repo_branch
       repo_path = var.repo_path
@@ -31,7 +31,7 @@ resource "kubernetes_secret" "git_trusted_keys"  {
   count = var.git_trusted_keys != "" ? 1 : 0
   metadata {
     namespace = var.fluxcd_namespace
-    name =      "${var.fluxcd_name}-trusted-keys"
+    name =      "${var.fluxcd_resources_name}-trusted-keys"
   }
 
   data = {
@@ -44,7 +44,7 @@ resource "kubernetes_secret" "git_trusted_keys"  {
 resource "kubernetes_secret" "git_ssh_key" {
   metadata {
     namespace = var.fluxcd_namespace
-    name =      "${var.fluxcd_name}-key"
+    name =      "${var.fluxcd_resources_name}-key"
   }
 
   data = {
