@@ -11,9 +11,9 @@ variable "fluxcd_resources_name" {
 }
 
 variable "git_trusted_keys" {
-  description = "Concatenated public keys of all trusted git authors"
-  type = string
-  default = ""
+  description = "List of public keys of all trusted git authors"
+  type = list(string)
+  default = []
 }
 
 variable "git_identity" {
