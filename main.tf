@@ -8,6 +8,7 @@ locals {
       repo_branch = var.repo_branch
       repo_path = var.repo_path
       repo_recurse_submodules = var.repo_recurse_submodules
+      included_repo = var.included_repo
       trusted_keys_verification = length(var.git_trusted_keys) > 0
     }
   ))

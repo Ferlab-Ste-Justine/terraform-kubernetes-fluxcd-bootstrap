@@ -1,3 +1,26 @@
+%{ if included_repo.enabled ~}
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: GitRepository
+metadata:
+  name: ${flux_resources_name}-include
+  namespace: ${flux_namespace}
+spec:
+  interval: 1m
+  timeout: 30s
+  recurseSubmodules: ${included_repo.recurse_submodules ? "true" : "false"}
+  url: ${included_repo.url}
+  secretRef:
+    name: ${flux_resources_name}-key
+  ref:
+    branch: ${included_repo.branch}
+%{ if trusted_keys_verification ~}
+  verify:
+    mode: head
+    secretRef:
+      name: ${flux_resources_name}-trusted-keys
+%{ endif ~}
+---
+%{ endif ~}
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: GitRepository
 metadata:
@@ -17,6 +40,12 @@ spec:
     mode: head
     secretRef:
       name: ${flux_resources_name}-trusted-keys
+%{ endif ~}
+%{ if included_repo.enabled ~}
+  include:
+    - repository:
+        name: ${flux_resources_name}-include
+      toPath: ${included_repo.path_in_primary_repo}
 %{ endif ~}
 ---
 apiVersion: rbac.authorization.k8s.io/v1

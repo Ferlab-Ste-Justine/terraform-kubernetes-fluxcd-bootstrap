@@ -48,3 +48,21 @@ variable "repo_recurse_submodules" {
   type = bool
   default = false
 }
+
+variable included_repo {
+  description = "Repo to include in the primary repo"
+  type = object({
+    enabled              = bool,
+    url                  = string,
+    branch               = string,
+    recurse_submodules   = bool
+    path_in_primary_repo = string
+  })
+  default = {
+    enabled              = false,
+    url                  = "",
+    branch               = "",
+    recurse_submodules   = false
+    path_in_primary_repo = ""
+  }
+}
