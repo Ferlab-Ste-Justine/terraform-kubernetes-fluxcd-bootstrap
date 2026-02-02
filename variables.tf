@@ -1,7 +1,13 @@
 variable "fluxcd_namespace" {
   description = "Namespace fluxcd bootstrap resources will run in"
-  type = string
-  default = "fluxcd"
+  type = object({
+    name   = string
+    labels = map(string)
+  })
+  default = {
+    name   = "fluxcd"
+    labels = {}
+  }
 }
 
 variable "fluxcd_resources_name" {

@@ -11,7 +11,7 @@ By the time the module has run, you will have:
 
 The module takes the following input variables:
 
-- **fluxcd_namespace**: Namespace of the resources pointing to the root repo will exist in. Defaults to "flux".
+- **fluxcd_namespace**: Object describing the namespace for bootstrap resources (name + optional labels). Defaults to name "fluxcd" with empty labels.
 - **fluxcd_resources_name**: Name to give to created resources. A **GitRepository**, **Kustomization**, and **ServiceAccount** resource will be created under the **fluxcd_namespace** namespace with that name. Additionally, a **ClusterRole** and **ClusterRoleBinding** resource will be created with the name ```<fluxcd_namespace>-<fluxcd_resources_name>```. And finally, two secrets named ```<fluxcd_resources_name>-key``` and ```<fluxcd_resources_name>-trusted-keys``` (the later is optional) will be created in the **fluxcd_namespace** namespace.
 - **git_identity**: Git ssh key to access repo
 - **git_known_hosts**: Git host fingerprint, in the format expected by fluxcd
@@ -42,6 +42,10 @@ module "flux_installation" {
 
 module "flux_bootstrap" {
   source = "git::https://github.com/Ferlab-Ste-Justine/fluxcd-bootstrap.git"
+  fluxcd_namespace = {
+    name   = "fluxcd"
+    labels = {}
+  }
   git_identity = tls_private_key.root_orchestration_repo.private_key_pem
   git_known_hosts = "github.com ssh-rsa <look it up>"
   repo_url = "ssh://git@github.com:22/my-org/my-repo.git"
