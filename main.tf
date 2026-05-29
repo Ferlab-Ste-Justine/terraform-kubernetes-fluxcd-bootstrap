@@ -1,37 +1,26 @@
-resource "kubernetes_namespace_v1" "fluxcd" {
-  count = var.create_namespace ? 1 : 0
+resource "kubernetes_secret_v1" "git_trusted_keys" {
+  count = length(var.git_trusted_keys) > 0 ? 1 : 0
 
   metadata {
-    name   = var.fluxcd_namespace.name
-    labels = var.fluxcd_namespace.labels
+    name      = "${var.fluxcd_resources_name}-trusted-keys"
+    namespace = var.fluxcd_namespace.name
+  }
+
+  data = {
+    for idx, key in var.git_trusted_keys : "key${idx}.asc" => key
   }
 }
 
 resource "kubernetes_secret_v1" "git_ssh_key" {
   metadata {
-    namespace = var.fluxcd_namespace.name
     name      = "${var.fluxcd_resources_name}-key"
+    namespace = var.fluxcd_namespace.name
   }
 
   data = {
     identity    = var.git_identity
     known_hosts = var.git_known_hosts
   }
-
-  depends_on = [kubernetes_namespace_v1.fluxcd]
-}
-
-resource "kubernetes_secret_v1" "git_trusted_keys" {
-  count = length(var.git_trusted_keys) > 0 ? 1 : 0
-
-  metadata {
-    namespace = var.fluxcd_namespace.name
-    name      = "${var.fluxcd_resources_name}-trusted-keys"
-  }
-
-  data = { for idx, key in var.git_trusted_keys : "key${idx}.asc" => key }
-
-  depends_on = [kubernetes_namespace_v1.fluxcd]
 }
 
 resource "kubectl_manifest" "gitrepository" {
