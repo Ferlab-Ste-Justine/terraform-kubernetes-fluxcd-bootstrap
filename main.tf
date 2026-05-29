@@ -1,44 +1,16 @@
-locals {
-  bootstrap_repo_resources_values = split("---\n", templatefile(
-    "${path.module}/bootstrap-repo-manifests/manifest-template.yml",
-    {
-      flux_namespace = var.fluxcd_namespace.name,
-      flux_resources_name = var.fluxcd_resources_name
-      repo_url = var.repo_url,
-      repo_branch = var.repo_branch
-      repo_path = var.repo_path
-      repo_recurse_submodules = var.repo_recurse_submodules
-      trusted_keys_verification = length(var.git_trusted_keys) > 0
-    }
-  ))
-  bootstrap_repo_resources_keys = [for elem_outer in [for elem_inner in local.bootstrap_repo_resources_values: yamldecode(elem_inner)]: "${elem_outer.apiVersion}/${elem_outer.kind}/${lookup(elem_outer.metadata, "namespace", "default")}/${elem_outer.metadata.name}"]
-  bootstrap_repo_resources = zipmap(local.bootstrap_repo_resources_keys, local.bootstrap_repo_resources_values)
-  trusted_keys_map = {for idx, key in var.git_trusted_keys : "key${idx}.asc" => key}
-}
+resource "kubernetes_namespace_v1" "fluxcd" {
+  count = var.create_namespace ? 1 : 0
 
-resource "kubernetes_namespace" "fluxcd" {
   metadata {
     name   = var.fluxcd_namespace.name
     labels = var.fluxcd_namespace.labels
   }
 }
 
-resource "kubernetes_secret" "git_trusted_keys"  {
-  count = length(var.git_trusted_keys) > 0 ? 1 : 0
+resource "kubernetes_secret_v1" "git_ssh_key" {
   metadata {
     namespace = var.fluxcd_namespace.name
-    name =      "${var.fluxcd_resources_name}-trusted-keys"
-  }
-
-  data = local.trusted_keys_map
-
-  depends_on = [kubernetes_namespace.fluxcd]
-}
-
-resource "kubernetes_secret" "git_ssh_key" {
-  metadata {
-    namespace = var.fluxcd_namespace.name
-    name =      "${var.fluxcd_resources_name}-key"
+    name      = "${var.fluxcd_resources_name}-key"
   }
 
   data = {
@@ -46,10 +18,71 @@ resource "kubernetes_secret" "git_ssh_key" {
     known_hosts = var.git_known_hosts
   }
 
-  depends_on = [kubernetes_namespace.fluxcd]
+  depends_on = [kubernetes_namespace_v1.fluxcd]
 }
 
-resource "kubectl_manifest" "bootstrap_repo" {
-  for_each   = local.bootstrap_repo_resources
-  yaml_body  = each.value
+resource "kubernetes_secret_v1" "git_trusted_keys" {
+  count = length(var.git_trusted_keys) > 0 ? 1 : 0
+
+  metadata {
+    namespace = var.fluxcd_namespace.name
+    name      = "${var.fluxcd_resources_name}-trusted-keys"
+  }
+
+  data = { for idx, key in var.git_trusted_keys : "key${idx}.asc" => key }
+
+  depends_on = [kubernetes_namespace_v1.fluxcd]
+}
+
+resource "kubectl_manifest" "gitrepository" {
+  yaml_body = yamlencode({
+    apiVersion = "source.toolkit.fluxcd.io/v1"
+    kind       = "GitRepository"
+    metadata = {
+      name      = var.fluxcd_resources_name
+      namespace = var.fluxcd_namespace.name
+    }
+    spec = merge(
+      {
+        interval          = "1m"
+        url               = var.repo_url
+        recurseSubmodules = var.repo_recurse_submodules
+        ref               = { branch = var.repo_branch }
+        secretRef         = { name = kubernetes_secret_v1.git_ssh_key.metadata[0].name }
+      },
+      length(var.git_trusted_keys) > 0 ? {
+        verify = {
+          mode      = "head"
+          secretRef = { name = kubernetes_secret_v1.git_trusted_keys[0].metadata[0].name }
+        }
+      } : {}
+    )
+  })
+
+  depends_on = [
+    kubernetes_secret_v1.git_ssh_key,
+    kubernetes_secret_v1.git_trusted_keys,
+  ]
+}
+
+resource "kubectl_manifest" "kustomization" {
+  yaml_body = yamlencode({
+    apiVersion = "kustomize.toolkit.fluxcd.io/v1"
+    kind       = "Kustomization"
+    metadata = {
+      name      = var.fluxcd_resources_name
+      namespace = var.fluxcd_namespace.name
+    }
+    spec = {
+      interval  = "1m"
+      prune     = true
+      path      = var.repo_path
+      sourceRef = {
+        kind = "GitRepository"
+        name = var.fluxcd_resources_name
+      }
+    }
+  })
+
+  depends_on = [kubectl_manifest.gitrepository]
 }
