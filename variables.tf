@@ -10,6 +10,12 @@ variable "fluxcd_namespace" {
   }
 }
 
+variable "create_namespace" {
+  description = "Whether to create the FluxCD namespace. Set to false when namespace is managed externally (e.g. by the fluxcd installation helm chart)."
+  type        = bool
+  default     = true
+}
+
 variable "fluxcd_resources_name" {
   description = "Name to give to generated bootstrap resources"
   type = string
