@@ -1,5 +1,5 @@
 variable "fluxcd_namespace" {
-  description = "Namespace fluxcd bootstrap resources will run in"
+  description = "Namespace where FluxCD resources (GitRepository, Kustomization, Secrets) will be created. Distinct from the system namespace where FluxCD controllers run."
   type = object({
     name   = string
     labels = map(string)
@@ -11,7 +11,7 @@ variable "fluxcd_namespace" {
 }
 
 variable "create_namespace" {
-  description = "Whether to create the FluxCD namespace. Set to false when namespace is managed externally (e.g. by the fluxcd installation helm chart)."
+  description = "Whether to create the FluxCD resources namespace. Set to false when the namespace is managed externally."
   type        = bool
   default     = true
 }
