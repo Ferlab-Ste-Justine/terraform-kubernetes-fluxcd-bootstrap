@@ -36,8 +36,8 @@ resource "kubernetes_secret_v1" "git_ssh_key" {
   depends_on = [kubernetes_namespace_v1.fluxcd]
 }
 
-resource "kubectl_manifest" "gitrepository" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "gitrepository" {
+  manifest = {
     apiVersion = "source.toolkit.fluxcd.io/v1"
     kind       = "GitRepository"
     metadata = {
@@ -59,7 +59,7 @@ resource "kubectl_manifest" "gitrepository" {
         }
       } : {}
     )
-  })
+  }
 
   depends_on = [
     kubernetes_secret_v1.git_ssh_key,
@@ -67,8 +67,8 @@ resource "kubectl_manifest" "gitrepository" {
   ]
 }
 
-resource "kubectl_manifest" "kustomization" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "kustomization" {
+  manifest = {
     apiVersion = "kustomize.toolkit.fluxcd.io/v1"
     kind       = "Kustomization"
     metadata = {
@@ -84,7 +84,7 @@ resource "kubectl_manifest" "kustomization" {
         name = var.fluxcd_resources_name
       }
     }
-  })
+  }
 
-  depends_on = [kubectl_manifest.gitrepository]
+  depends_on = [kubernetes_manifest.gitrepository]
 }
