@@ -29,13 +29,25 @@ variable "git_trusted_keys" {
 }
 
 variable "git_identity" {
-  description = "Git ssh key to access repo"
-  type = string
+  description = "Git SSH private key to access repo. Required when git_https_credentials is not set."
+  type    = string
+  default = null
 }
 
 variable "git_known_hosts" {
-  description = "Git host fingerprint, in the format expected by fluxcd"
-  type = string
+  description = "Git host fingerprint, in the format expected by FluxCD. Required when git_https_credentials is not set."
+  type    = string
+  default = null
+}
+
+variable "git_https_credentials" {
+  description = "HTTPS credentials for git access (username + password/PAT). Mutually exclusive with git_identity/git_known_hosts."
+  type = object({
+    username = string
+    password = string
+  })
+  default   = null
+  sensitive = true
 }
 
 variable "repo_url" {
