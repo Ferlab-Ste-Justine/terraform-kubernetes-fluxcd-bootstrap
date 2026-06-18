@@ -1,12 +1,6 @@
 locals {
-  use_https = var.git_https_credentials != null
-}
-
-check "git_auth_mode" {
-  assert {
-    condition     = local.use_https != (var.git_identity != null)
-    error_message = "Exactly one of git_identity/git_known_hosts or git_https_credentials must be provided."
-  }
+  use_https   = var.auth.https != null
+  secret_name = "${var.fluxcd_resources_name}-credentials"
 }
 
 resource "kubernetes_namespace_v1" "fluxcd" {
@@ -33,33 +27,33 @@ resource "kubernetes_secret_v1" "git_trusted_keys" {
   depends_on = [kubernetes_namespace_v1.fluxcd]
 }
 
-resource "kubernetes_secret_v1" "git_ssh_key" {
+resource "kubernetes_secret_v1" "git_ssh_credentials" {
   count = local.use_https ? 0 : 1
 
   metadata {
-    name      = "${var.fluxcd_resources_name}-key"
+    name      = local.secret_name
     namespace = var.fluxcd_namespace.name
   }
 
-  data = {
-    identity    = var.git_identity
-    known_hosts = var.git_known_hosts
-  }
+  data = merge(
+    { identity = var.auth.ssh.key },
+    var.auth.ssh.known_hosts != null ? { known_hosts = var.auth.ssh.known_hosts } : {}
+  )
 
   depends_on = [kubernetes_namespace_v1.fluxcd]
 }
 
-resource "kubernetes_secret_v1" "git_https_key" {
+resource "kubernetes_secret_v1" "git_https_credentials" {
   count = local.use_https ? 1 : 0
 
   metadata {
-    name      = "${var.fluxcd_resources_name}-key"
+    name      = local.secret_name
     namespace = var.fluxcd_namespace.name
   }
 
   data = {
-    username = var.git_https_credentials.username
-    password = var.git_https_credentials.password
+    username = var.auth.https.username
+    password = var.auth.https.password
   }
 
   depends_on = [kubernetes_namespace_v1.fluxcd]
@@ -79,9 +73,7 @@ resource "kubernetes_manifest" "gitrepository" {
         url               = var.repo_url
         recurseSubmodules = var.repo_recurse_submodules
         ref               = { branch = var.repo_branch }
-        secretRef = {
-          name = local.use_https ? kubernetes_secret_v1.git_https_key[0].metadata[0].name : kubernetes_secret_v1.git_ssh_key[0].metadata[0].name
-        }
+        secretRef         = { name = local.secret_name }
       },
       length(var.git_trusted_keys) > 0 ? {
         verify = {
@@ -93,8 +85,8 @@ resource "kubernetes_manifest" "gitrepository" {
   }
 
   depends_on = [
-    kubernetes_secret_v1.git_ssh_key,
-    kubernetes_secret_v1.git_https_key,
+    kubernetes_secret_v1.git_ssh_credentials,
+    kubernetes_secret_v1.git_https_credentials,
     kubernetes_secret_v1.git_trusted_keys,
   ]
 }
